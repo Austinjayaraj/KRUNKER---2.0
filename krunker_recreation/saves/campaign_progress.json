@@ -1,0 +1,14 @@
+{
+  "unlocked_level": 1,
+  "total_xp": 0,
+  "total_coins": 0,
+  "unlocked_weapons": [
+    "assault_rifle",
+    "sniper_rifle",
+    "smg"
+  ],
+  "unlocked_cosmetics": [
+    "tactical"
+  ],
+  "completed_levels": {}
+}

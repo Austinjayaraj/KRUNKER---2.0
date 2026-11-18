@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "krunker-fps-3d"
+version = "1.0.0"
+description = "Krunker-Style Complete 3D FPS Game Engine in Python & Panda3D"
+readme = "krunker_recreation/README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "panda3d>=1.10.13",
+    "numpy>=1.24.0",
+]
+
+[project.scripts]
+krunker-fps = "run_krunker:main"

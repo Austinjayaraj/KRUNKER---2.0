@@ -1,0 +1,90 @@
+"""
+Player class definitions for the Krunker Python FPS engine.
+Each class defines base health, speed multiplier, primary weapon, secondary weapon,
+and unique tactical characteristics.
+"""
+
+from typing import Dict, Any
+
+CLASSES: Dict[str, Dict[str, Any]] = {
+    'triggerman': {
+        'name': 'Triggerman',
+        'role': 'Assault / Balanced',
+        'base_health': 100,
+        'speed_multiplier': 1.0,
+        'primary_weapon': 'assault_rifle',
+        'secondary_weapon': 'revolver',
+        'description': 'Balanced soldier armed with high-capacity assault rifle and secondary pistol.',
+        'color': '#38bdf8',
+    },
+    'hunter': {
+        'name': 'Hunter',
+        'role': 'Sniper / High Damage',
+        'base_health': 60,
+        'speed_multiplier': 1.05,
+        'primary_weapon': 'sniper_rifle',
+        'secondary_weapon': 'revolver',
+        'description': 'High skill, lethal bolt-action marksman. Fragile HP pool compensated by one-shot precision.',
+        'color': '#f59e0b',
+    },
+    'run_n_gun': {
+        'name': 'Run N Gun',
+        'role': 'Infiltrator / High Mobility',
+        'base_health': 100,
+        'speed_multiplier': 1.12,
+        'primary_weapon': 'smg',
+        'secondary_weapon': 'revolver',
+        'description': 'Rapid-fire SMG with rapid slide-hop velocity and tight hipfire accuracy.',
+        'color': '#10b981',
+    },
+    'vince': {
+        'name': 'Vince',
+        'role': 'Breacher / Close Quarters',
+        'base_health': 90,
+        'speed_multiplier': 1.02,
+        'primary_weapon': 'shotgun',
+        'secondary_weapon': 'revolver',
+        'description': 'Devastating close-range scattergun capable of shotgun-jumping momentum boosts.',
+        'color': '#ef4444',
+    },
+    'detective': {
+        'name': 'Detective',
+        'role': 'Gunslinger / High Precision',
+        'base_health': 100,
+        'speed_multiplier': 1.0,
+        'primary_weapon': 'revolver',
+        'secondary_weapon': 'assault_rifle',
+        'description': 'Deadly six-shooter specialist dealing massive critical headshot damage.',
+        'color': '#8b5cf6',
+    },
+    'marksman': {
+        'name': 'Marksman',
+        'role': 'Semi-Auto / DMR',
+        'base_health': 90,
+        'speed_multiplier': 1.0,
+        'primary_weapon': 'semi_auto',
+        'secondary_weapon': 'revolver',
+        'description': 'Semi-automatic tactical carbine rewarding steady aim and mid-range cadence.',
+        'color': '#06b6d4',
+    },
+    'rocketeer': {
+        'name': 'Rocketeer',
+        'role': 'Heavy / Explosive',
+        'base_health': 130,
+        'speed_multiplier': 0.9,
+        'primary_weapon': 'rocket_launcher',
+        'secondary_weapon': 'revolver',
+        'description': 'Heavy infantry wielding explosive ordnance capable of splash damage and rocket-jumping.',
+        'color': '#f97316',
+    },
+    'runner': {
+        'name': 'Runner',
+        'role': 'Melee / Ultra Mobility',
+        'base_health': 120,
+        'speed_multiplier': 1.25,
+        'primary_weapon': 'combat_knife',
+        'secondary_weapon': 'revolver',
+        'description': 'Ultra-fast melee assassin with maximum slide-hopping acceleration.',
+        'color': '#ec4899',
+    },
+}

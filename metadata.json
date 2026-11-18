@@ -1,0 +1,6 @@
+{
+  "name": "Krunker 3D FPS - Block Arena",
+  "description": "Fast-paced 3D first-person shooter featuring momentum-based slide hopping, 8 weapon classes, tactical AI bots, 4 combat maps, and competitive game modes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
