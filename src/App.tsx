@@ -31,6 +31,8 @@ import {
   saveUserStats,
   awardMatchXp,
   DEFAULT_USER_STATS,
+  fetchPersistedGameState,
+  syncPersistedGameState,
 } from './game/progression/progressionSystem';
 import {
   CAMPAIGN_LEVELS_LIST,
@@ -265,6 +267,29 @@ export default function App() {
     } catch {
       // ignore
     }
+
+    fetchPersistedGameState().then((persisted) => {
+      if (!persisted) return;
+      if (persisted.userStats && persisted.userStats.matchesPlayed > 0) {
+        setUserStats((prev) =>
+          persisted.userStats!.matchesPlayed >= prev.matchesPlayed
+            ? persisted.userStats!
+            : prev
+        );
+        saveUserStats(persisted.userStats);
+      }
+      if (persisted.preferences) {
+        const p = persisted.preferences;
+        if (p.currentClass) setCurrentClass(p.currentClass);
+        if (p.selectedMap && MAPS[p.selectedMap]) setSelectedMap(p.selectedMap);
+        if (p.selectedMode && p.selectedMode !== 'campaign') setSelectedMode(p.selectedMode);
+        if (p.botDifficulty) setBotDifficulty(p.botDifficulty);
+        if (typeof p.botCount === 'number' && p.botCount >= 1) setBotCount(p.botCount);
+        if (p.settings && Object.keys(p.settings).length > 0) {
+          setSettings((prev) => ({ ...prev, ...p.settings }));
+        }
+      }
+    });
   }, []);
 
   const showToast = (msg: string, durationMs: number = 2400) => {
@@ -289,6 +314,16 @@ export default function App() {
     } catch {
       // ignore
     }
+    syncPersistedGameState({
+      preferences: {
+        currentClass,
+        selectedMap,
+        selectedMode,
+        botDifficulty,
+        botCount,
+        settings: newSettings,
+      },
+    });
   };
 
   // Clear 3D campaign objective meshes
@@ -1355,10 +1390,33 @@ export default function App() {
       userStats,
       matchKillsRef.current,
       matchHeadshotsRef.current,
-      isVictory
+      isVictory,
+      matchDeathsRef.current,
+      shotsFiredRef.current,
+      shotsHitRef.current
     );
     setUserStats(xpRes.updatedStats);
     saveUserStats(xpRes.updatedStats);
+    syncPersistedGameState({
+      userStats: xpRes.updatedStats,
+      preferences: {
+        currentClass,
+        selectedMap,
+        selectedMode,
+        botDifficulty,
+        botCount,
+        settings,
+      },
+      matchRecord: {
+        mode: selectedMode,
+        mapId: selectedMap,
+        kills: matchKillsRef.current,
+        deaths: matchDeathsRef.current,
+        headshots: matchHeadshotsRef.current,
+        score: matchKillsRef.current * 100 + matchHeadshotsRef.current * 50,
+        isVictory,
+      },
+    });
     setMatchRewards({
       xpGained: xpRes.xpGained,
       didLevelUp: xpRes.didLevelUp,

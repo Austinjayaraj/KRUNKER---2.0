@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
-import { exec } from 'child_process';
+import { exec, spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -159,10 +159,34 @@ app.post('/api/python/save-config', (req: Request, res: Response) => {
   }
 });
 
-// 7. Persistent Campaign Progression API (reads/writes krunker_recreation/saves/campaign_progress.json)
+// 7. Persistent SQLite3 + JSON Storage Engine (krunker_recreation/saves/krunker_arena.db & JSON mirror)
 const CAMPAIGN_SAVE_FILE = path.resolve(__dirname, 'krunker_recreation/saves/campaign_progress.json');
+const FULL_STATE_FILE = path.resolve(__dirname, 'krunker_recreation/saves/full_game_state.json');
+const DB_SCRIPT_PATH = path.resolve(__dirname, 'krunker_recreation/core/database.py');
+
+function runPythonDbCommand(cmd: string, payload?: any): any | null {
+  try {
+    const inputStr = payload ? JSON.stringify(payload) : '';
+    const proc = spawnSync('python3', [DB_SCRIPT_PATH, cmd], {
+      cwd: __dirname,
+      input: inputStr,
+      encoding: 'utf8',
+      timeout: 4000,
+    });
+    if (proc.status === 0 && proc.stdout) {
+      return JSON.parse(proc.stdout.trim());
+    }
+  } catch {
+    // Fallback to JSON mirror if python3 subprocess fails
+  }
+  return null;
+}
 
 function readCampaignSave() {
+  const sqlRes = runPythonDbCommand('get_campaign');
+  if (sqlRes && typeof sqlRes.unlocked_level === 'number') {
+    return sqlRes;
+  }
   const defaultSave = {
     unlocked_level: 1,
     total_xp: 0,
@@ -187,6 +211,68 @@ function writeCampaignSave(data: any) {
   fs.writeFileSync(CAMPAIGN_SAVE_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
 
+function readFullStateSave() {
+  const sqlRes = runPythonDbCommand('get_state');
+  if (sqlRes && sqlRes.userStats) {
+    return sqlRes;
+  }
+  const defaultFull = {
+    userStats: {
+      level: 1,
+      xp: 0,
+      xpToNextLevel: 1000,
+      totalKills: 0,
+      totalDeaths: 0,
+      headshots: 0,
+      shotsFired: 0,
+      shotsHit: 0,
+      matchesPlayed: 0,
+      matchesWon: 0,
+      unlockedSkins: ['tactical', 'cyber', 'gold', 'camo', 'hyperbeast'],
+    },
+    preferences: {
+      currentClass: 'triggerman',
+      selectedMap: 'urban',
+      selectedMode: 'ffa',
+      botDifficulty: 'normal',
+      botCount: 4,
+      settings: {},
+    },
+    campaignProgress: readCampaignSave(),
+    matchHistory: [] as any[],
+  };
+  try {
+    if (fs.existsSync(FULL_STATE_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(FULL_STATE_FILE, 'utf8'));
+      return { ...defaultFull, ...parsed };
+    }
+  } catch {
+    // ignore
+  }
+  return defaultFull;
+}
+
+function writeFullStateSave(payload: any) {
+  const sqlRes = runPythonDbCommand('save_state', payload);
+  const nextState = sqlRes || {
+    ...readFullStateSave(),
+    ...(payload.userStats ? { userStats: payload.userStats } : {}),
+    ...(payload.preferences ? { preferences: payload.preferences } : {}),
+  };
+  fs.mkdirSync(path.dirname(FULL_STATE_FILE), { recursive: true });
+  fs.writeFileSync(FULL_STATE_FILE, JSON.stringify(nextState, null, 2), 'utf8');
+  return nextState;
+}
+
+app.get('/api/storage/state', (_req: Request, res: Response) => {
+  res.json(readFullStateSave());
+});
+
+app.post('/api/storage/state', (req: Request, res: Response) => {
+  const updated = writeFullStateSave(req.body || {});
+  res.json(updated);
+});
+
 app.get('/api/campaign/progress', (_req: Request, res: Response) => {
   res.json(readCampaignSave());
 });
@@ -194,6 +280,24 @@ app.get('/api/campaign/progress', (_req: Request, res: Response) => {
 app.post('/api/campaign/complete', (req: Request, res: Response) => {
   const { levelNumber, stars, score, timeSec, xpEarned, coinsEarned, weaponUnlock, cosmeticReward } = req.body;
   const lvl = Math.max(1, Math.min(15, Number(levelNumber) || 1));
+
+  // Persist into SQLite3 database first
+  const sqlState = runPythonDbCommand('complete_campaign', {
+    levelNumber: lvl,
+    stars,
+    score,
+    timeSec,
+    xpEarned,
+    coinsEarned,
+    weaponUnlock,
+    cosmeticReward,
+  });
+
+  if (sqlState && typeof sqlState.unlocked_level === 'number') {
+    writeCampaignSave(sqlState);
+    return res.json(sqlState);
+  }
+
   const state = readCampaignSave();
   const key = String(lvl);
   const prev = state.completed_levels[key] || {};

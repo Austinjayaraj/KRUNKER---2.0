@@ -1,4 +1,4 @@
-import { UserStats } from '../types';
+import { UserStats, GameSettings, ClassId, GameModeType, BotDifficulty } from '../types';
 
 export const DEFAULT_USER_STATS: UserStats = {
   level: 1,
@@ -14,6 +14,25 @@ export const DEFAULT_USER_STATS: UserStats = {
   unlockedSkins: ['tactical', 'cyber', 'gold', 'camo', 'hyperbeast'],
 };
 
+export interface PlayerPreferencesState {
+  currentClass: ClassId;
+  selectedMap: string;
+  selectedMode: GameModeType;
+  botDifficulty: BotDifficulty;
+  botCount: number;
+  settings?: Partial<GameSettings>;
+}
+
+export interface MatchRecordPayload {
+  mode: string;
+  mapId: string;
+  kills: number;
+  deaths: number;
+  headshots: number;
+  score: number;
+  isVictory: boolean;
+}
+
 export function getXpRequiredForLevel(level: number): number {
   return Math.floor(1000 * Math.pow(1.18, Math.max(1, level) - 1));
 }
@@ -22,9 +41,12 @@ export function awardMatchXp(
   currentStats: UserStats,
   matchKills: number,
   matchHeadshots: number,
-  isVictory: boolean
+  isVictory: boolean,
+  matchDeaths: number = 0,
+  matchShotsFired: number = 0,
+  matchShotsHit: number = 0
 ): { updatedStats: UserStats; xpGained: number; didLevelUp: boolean } {
-  let xpGained = matchKills * 100 + matchHeadshots * 50 + (isVictory ? 500 : 200);
+  const xpGained = matchKills * 100 + matchHeadshots * 50 + (isVictory ? 500 : 200);
   let newXp = currentStats.xp + xpGained;
   let newLevel = currentStats.level;
   let req = getXpRequiredForLevel(newLevel);
@@ -43,7 +65,10 @@ export function awardMatchXp(
     xp: newXp,
     xpToNextLevel: req,
     totalKills: currentStats.totalKills + matchKills,
+    totalDeaths: currentStats.totalDeaths + matchDeaths,
     headshots: currentStats.headshots + matchHeadshots,
+    shotsFired: currentStats.shotsFired + matchShotsFired,
+    shotsHit: currentStats.shotsHit + matchShotsHit,
     matchesPlayed: currentStats.matchesPlayed + 1,
     matchesWon: currentStats.matchesWon + (isVictory ? 1 : 0),
   };
@@ -78,5 +103,37 @@ export function saveUserStats(stats: UserStats): void {
     localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
   } catch {
     // ignore
+  }
+}
+
+export async function fetchPersistedGameState(): Promise<{
+  userStats?: UserStats;
+  preferences?: PlayerPreferencesState;
+} | null> {
+  try {
+    const res = await fetch('/api/storage/state');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function syncPersistedGameState(payload: {
+  userStats?: UserStats;
+  preferences?: PlayerPreferencesState;
+  matchRecord?: MatchRecordPayload;
+}): Promise<void> {
+  try {
+    if (payload.userStats) {
+      saveUserStats(payload.userStats);
+    }
+    await fetch('/api/storage/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Ignore network errors and rely on localStorage cache
   }
 }
